@@ -1,0 +1,9 @@
+- name: load common role
+  include_role:
+    name: common
+
+- name: join cluster
+  shell: "{{ lookup('file', '../../kube-master/templates/join.txt') }} >> join_node.txt"
+  args:
+    chdir: $HOME
+    creates: join_node.txt

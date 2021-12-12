@@ -1,0 +1,44 @@
+- block:
+  - name: create a non-root user for the machines
+    user: 
+      name: "{{ kube_user }}"
+      shell: /bin/bash
+      createhome: yes
+      state: present
+
+  - name: grant the non-root user passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      line: '{{ kube_user }} ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: copy ssh keys 
+    authorized_key: 
+      user: "{{ kube_user }}" 
+      key: "{{ item }}"
+    with_file:
+      - ../../../kube_rsa.pub
+  
+- block:
+  - name: add Kubernetes apt-key
+    apt_key:
+      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      state: present
+
+  - name: add Kubernetes apt repository
+    apt_repository:
+      repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+      state: present
+      filename: kubernetes
+
+  - name: install required packages
+    apt:
+      name: "{{ item }}"
+      state: present
+      update_cache: true
+    with_items:
+      - "docker.io"
+      - "apt-transport-https"
+      - "kubelet=1.23.0-00"
+      - "kubeadm=1.23.0-00"
+      - "kubectl=1.23.0-00"

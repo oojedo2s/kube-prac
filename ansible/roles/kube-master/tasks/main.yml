@@ -1,0 +1,39 @@
+- name: load common role
+  include_role:
+    name: common
+
+- name: initialize the cluster
+  shell: kubeadm init --pod-network-cidr=10.244.0.0/16 --apiserver-advertise-address=192.168.95.5 >> init_cluster.txt
+  args:
+    chdir: $HOME
+    creates: init_cluster.txt
+
+- name: create .kube directory
+  become: yes
+  become_user: "{{ kube_user }}"
+  file:
+    path: $HOME/.kube
+    state: directory
+    mode: 0755
+
+- name: copy admin.conf to user's kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ kube_user }}/.kube/config"
+    remote_src: yes
+    owner: "{{ kube_user }}"
+
+- name: install Pod network
+  become: yes
+  become_user: "{{ kube_user }}"
+  shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml >> pod_network_setup.txt
+  args:
+    chdir: $HOME
+    creates: pod_network_setup.txt
+
+- name: generate worker join credentials
+  shell: kubeadm token create --print-join-command
+  register: worker_join_command
+
+- name: save join command to file
+  local_action: copy content={{ worker_join_command.stdout_lines[0] }} dest=../templates/join.txt

@@ -9,7 +9,7 @@ ed="\e[0m"
 
 appcheck(){
     dpkg -s $1 &>/dev/null
-    #set -e
+
     if [[ $? -ne 0 ]]; then
         $e "$bg $1 is not installed $ed"
         if [[ $1 == "virtualbox" ]]; then 
@@ -29,12 +29,10 @@ appcheck(){
 appcheck virtualbox
 appcheck vagrant
 
-# Generate ssh key
-ssh-keygen -t rsa -b 4096 -f ./kube_rsa -N ""
+# Generate kube user ssh key
+ssh-keygen -t rsa -b 4096 -f ./kube_rsa -N "" -q
 
-mkdir -p ./vag_config
-cd ./vag_config
-
-#vagrant up
+vagrant up
 # Run with --provision flag as below if the Vagrantfile is modified after a previous run of this script
-vagrant up --provision
+#vagrant up --provision
+

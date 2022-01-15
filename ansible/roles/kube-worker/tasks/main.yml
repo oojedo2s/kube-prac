@@ -2,8 +2,22 @@
   include_role:
     name: common
 
+# - name: check if node is joined to cluster
+#   become_user: "{{ kube_user }}"
+#   shell: "kubectl get node -o name"
+#   delegate_to: kube-master
+#   register: check_node
+
 - name: join cluster
-  shell: "{{ lookup('file', '../../kube-master/templates/join.txt') }} >> join_node.txt"
+  shell: "{{ lookup('file', '{{ playbook_dir }}/files/join.txt') }} >> join_node.txt"
   args:
     chdir: $HOME
     creates: join_node.txt
+  # when: "inventory_hostname not in check_node.stdout_lines"
+
+- name: copy kube config into worker node
+  copy:
+    src: "{{ playbook_dir }}/files/config"
+    dest: "/home/{{ kube_user }}/.kube/config"
+    owner: "{{ kube_user }}"
+    group: "{{ kube_user }}"

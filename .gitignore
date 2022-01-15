@@ -1,6 +1,7 @@
 # Vagrant 
 .vagrant
 **/.vagrant
+**/*.log
 
 # Distribution / packaging
 .Python
@@ -20,3 +21,7 @@ venv.bak/
 # SSH
 *_rsa*
 **/*_rsa*
+
+# Ansible (kube worker join command) 
+**/join.txt
+**/config

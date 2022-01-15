@@ -1,1 +1,3 @@
 kube_user: k8s
+os_release: focal
+kube_pkg_version: 1.23.0-00

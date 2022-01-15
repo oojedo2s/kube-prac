@@ -1,44 +1,98 @@
-- block:
-  - name: create a non-root user for the machines
-    user: 
-      name: "{{ kube_user }}"
-      shell: /bin/bash
-      createhome: yes
-      state: present
+# - block:
+#   - name: create a non-root user for the machines
+#     user: 
+#       name: "{{ kube_user }}"
+#       shell: /bin/bash
+#       createhome: yes
+#       state: present
 
-  - name: grant the non-root user passwordless sudo
-    lineinfile:
-      dest: /etc/sudoers
-      line: '{{ kube_user }} ALL=(ALL) NOPASSWD: ALL'
-      validate: 'visudo -cf %s'
+#   - name: grant the non-root user passwordless sudo
+#     lineinfile:
+#       dest: /etc/sudoers
+#       line: "{{ kube_user }} ALL=(ALL) NOPASSWD: ALL"
+#       validate: 'visudo -cf %s'
+  
+#   - name: generate ssh keypair for non-root user
+#     openssh_keypair:
+#       path: "{{ role_path }}/files/kube_rsa"
+#       size: 4096
+#       type: rsa
+#       owner: "{{ lookup('env', 'USER') }}"
+#       group: "{{ lookup('env', 'USER') }}" 
+#     delegate_to: localhost
 
-  - name: copy ssh keys 
-    authorized_key: 
-      user: "{{ kube_user }}" 
-      key: "{{ item }}"
-    with_file:
-      - ../../../kube_rsa.pub
+#   - name: copy ssh keys 
+#     authorized_key: 
+#       user: "{{ kube_user }}" 
+#       key: "{{ item }}"
+#     no_log: true
+#     with_file:
+#       - kube_rsa.pub
   
 - block:
-  - name: add Kubernetes apt-key
+  - name: add Kubernetes & Docker apt signing key
     apt_key:
-      url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+      url: "{{ item }}"
       state: present
+    with_items:
+      - "https://packages.cloud.google.com/apt/doc/apt-key.gpg"
+      - "https://download.docker.com/linux/ubuntu/gpg"
 
-  - name: add Kubernetes apt repository
+  - name: add Kubernetes & Docker apt repository
     apt_repository:
-      repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+      repo: "{{ item }}"
       state: present
       filename: kubernetes
+    with_items:
+      - "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+      - "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ os_release }} stable"
 
   - name: install required packages
     apt:
       name: "{{ item }}"
       state: present
+      allow_downgrade: true
       update_cache: true
     with_items:
-      - "docker.io"
       - "apt-transport-https"
-      - "kubelet=1.23.0-00"
-      - "kubeadm=1.23.0-00"
-      - "kubectl=1.23.0-00"
+      - "ca-certificates"
+      - "curl"
+      - "software-properties-common"
+      - "gnupg-agent"
+      - "docker-ce"
+      - "docker-ce-cli"
+      - "containerd.io"
+      - "kubelet={{ kube_pkg_version }}"
+      - "kubeadm={{ kube_pkg_version }}"
+      - "kubectl={{ kube_pkg_version }}"
+  
+  - block:
+
+    - name: enable kubectl autocompletion
+      shell: "echo 'source <(kubectl completion bash)' >> /home/{{ kube_user }}/.bashrc && source /home/{{ kube_user }}/.bashrc"
+      run_once: true
+    
+    - name: create docker directory
+      file:
+        path: /etc/docker
+        state: directory
+      notify: 
+        - enable docker
+
+    - name: configure docker to use systemd as cgroupdriver
+      template:
+        src: daemon.json.j2
+        dest: /etc/docker/daemon.json
+      notify:
+        - systemd daemon-reload
+      register: docker_config
+    
+    - name: restart docker
+      service:
+        name: docker
+        state: restarted
+      when: docker_config.changed
+
+    - name: force run pending restarts/reloads
+      meta: flush_handlers
+    

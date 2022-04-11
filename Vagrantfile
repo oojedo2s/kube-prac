@@ -8,6 +8,9 @@ WORKER_NAME = "kube-worker"
 WORKER_NUM = 2    # any change to this should also be made in the host-setup.sh & ansible/hosts.yml files
 IP_SUBNET = "192.168.95."
 
+# If virtualbox E_ACCESSDENIED occurs, create a /etc/vbox/networks.conf file and add allowed ranges.
+# For example, "* 192.168.56.0/16 192.168.95.0/16"
+
 Vagrant.configure("2") do |config|
   config.vm.box = VM_BOX
   config.vm.box_check_update = false

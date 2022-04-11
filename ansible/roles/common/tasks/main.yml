@@ -69,7 +69,7 @@
   - block:
 
     - name: enable kubectl autocompletion
-      shell: "echo 'source <(kubectl completion bash)' >> /home/{{ kube_user }}/.bashrc && source /home/{{ kube_user }}/.bashrc"
+      command: "echo 'source <(kubectl completion bash)' >> /home/{{ kube_user }}/.bashrc && source /home/{{ kube_user }}/.bashrc"
       run_once: true
     
     - name: create docker directory
